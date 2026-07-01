@@ -1,0 +1,6 @@
+{
+  "api_key": "YOUR_AMBIENT_WEATHER_API_KEY",
+  "application_key": "YOUR_AMBIENT_WEATHER_APPLICATION_KEY",
+  "mac_address": "YOUR_STATION_MAC_ADDRESS",
+  "workbook_path": "/path/to/My_Pool_Test_Results.xlsx"
+}
