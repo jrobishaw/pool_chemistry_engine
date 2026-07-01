@@ -1,0 +1,51 @@
+import json
+import requests
+import pandas as pd
+from openpyxl import load_workbook
+
+with open("pool_weather_settings.json", "r") as f:
+    settings = json.load(f)
+
+api_key = settings["api_key"]
+application_key = settings["application_key"]
+mac = settings["mac_address"]
+workbook_path = settings["workbook_path"]
+
+url = f"https://api.ambientweather.net/v1/devices/{mac}"
+
+params = {
+    "apiKey": api_key,
+    "applicationKey": application_key,
+    "limit": 960
+}
+
+response = requests.get(url, params=params, timeout=90)
+response.raise_for_status()
+
+data = response.json()
+
+df = pd.DataFrame(data)
+
+df["LocalDateTime"] = (
+    pd.to_datetime(df["dateutc"], unit="ms", utc=True)
+    .dt.tz_convert("America/Chicago")
+    .dt.tz_localize(None)
+)
+
+df["Date"] = df["LocalDateTime"].dt.date
+
+summary = df.groupby("Date").agg(
+    HighTempF=("tempf", "max"),
+    AvgTempF=("tempf", "mean"),
+    MaxUV=("uv", "max"),
+    MaxSolarRadiation=("solarradiation", "max"),
+    DailyRainIn=("dailyrainin", "max"),
+    MaxWindGustMPH=("windgustmph", "max"),
+    AvgHumidity=("humidity", "mean")
+).reset_index()
+
+with pd.ExcelWriter(workbook_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+    df.to_excel(writer, sheet_name="Weather Raw", index=False)
+    summary.to_excel(writer, sheet_name="Weather Daily Summary", index=False)
+
+print("Weather data updated successfully.")
