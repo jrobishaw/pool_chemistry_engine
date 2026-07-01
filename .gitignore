@@ -5,7 +5,6 @@ pool_weather_settings.json
 
 # Excel/data outputs
 *.xlsx
-*.sls
 *.xls
 *.csv
 
