@@ -13,6 +13,10 @@ from pool_engine.chemistry import (
     fc_targets,
     ppm_per_gallon,
 )
+from pool_engine.excel_io import (
+    read_test_results,
+    write_recommendations_and_pool_health,
+)
 
 SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_weather_settings.json"
 
@@ -154,9 +158,7 @@ def main():
         get_setting(settings, "chlorine_strength_percent", DEFAULT_CHLORINE_STRENGTH_PERCENT)
     )
 
-    tests = pd.read_excel(workbook_path, sheet_name="Test Results")
-    tests["Date"] = pd.to_datetime(tests["Date"], errors="coerce")
-    tests = tests.dropna(subset=["Date"]).sort_values("Date")
+    tests = read_test_results(workbook_path)
 
     if tests.empty:
         raise SystemExit("ERROR: No dated test results found in Test Results sheet.")
@@ -276,27 +278,7 @@ def main():
         "Notes": action_reason,
     }])
 
-    try:
-        existing_pool_health = pd.read_excel(workbook_path, sheet_name="Pool Health")
-    except Exception:
-        existing_pool_health = pd.DataFrame()
-
-    if not existing_pool_health.empty:
-        combined_pool_health = pd.concat([existing_pool_health, pool_health], ignore_index=True)
-    else:
-        combined_pool_health = pool_health.copy()
-
-    combined_pool_health["Date"] = pd.to_datetime(combined_pool_health["Date"], errors="coerce")
-    combined_pool_health = (
-        combined_pool_health
-        .drop_duplicates(subset=["Date"], keep="last")
-        .sort_values("Date")
-        .reset_index(drop=True)
-    )
-
-    with pd.ExcelWriter(workbook_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-        recommendations.to_excel(writer, sheet_name="Pool Recommendations", index=False)
-        combined_pool_health.to_excel(writer, sheet_name="Pool Health", index=False)
+    write_recommendations_and_pool_health(workbook_path, recommendations, pool_health)
 
     log("Pool chemistry recommendations updated successfully.")
     log(f"Overall Status: {overall}")
@@ -313,4 +295,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
