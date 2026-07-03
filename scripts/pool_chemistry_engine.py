@@ -5,7 +5,8 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-SETTINGS_FILE = "config/pool_weather_settings.json"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_chemistry_settings.json"
 
 DEFAULT_POOL_GALLONS = 24000
 DEFAULT_CHLORINE_STRENGTH_PERCENT = 10

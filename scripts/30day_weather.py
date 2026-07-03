@@ -6,7 +6,9 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-SETTINGS_FILE = "config/pool_weather_settings.json"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_weather_settings.json"
+
 TIMEZONE = "America/Chicago"
 DAYS_BACK = 30
 RECORD_LIMIT = 288  # Ambient max per request
