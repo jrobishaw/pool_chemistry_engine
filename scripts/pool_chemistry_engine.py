@@ -1,10 +1,12 @@
 import json
 import sys
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent if (CURRENT_DIR.parent / "pool_engine").exists() else CURRENT_DIR
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from pool_engine.chemistry import (
@@ -17,6 +19,8 @@ from pool_engine.excel_io import (
     read_test_results,
     write_recommendations_and_pool_health,
 )
+from pool_engine.test_values import collect_test_values
+
 
 SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_weather_settings.json"
 
@@ -24,37 +28,9 @@ DEFAULT_POOL_GALLONS = 24000
 DEFAULT_CHLORINE_STRENGTH_PERCENT = 10
 DEFAULT_TEMP_F = 85.0
 
-MANDATORY_TESTS = {
-    "FC": "Free Chlorine",
-    "CC": "Combined Chlorine",
-    "pH": "pH",
-}
-
-OPTIONAL_TESTS = {
-    "TC": "Total Chlorine",
-    "CH": "Calcium Hardness",
-    "TA": "Total Alkalinity",
-    "CYA": "Cyanuric Acid",
-    "Temp": "Water Temperature",
-}
-
-CARRY_FORWARD_TESTS = {
-    "CYA": "Cyanuric Acid",
-    "CH": "Calcium Hardness",
-    "TA": "Total Alkalinity",
-    "Temp": "Water Temperature",
-}
-
 
 def log(message: str) -> None:
     print(message)
-
-
-def to_numeric_or_none(value):
-    converted = pd.to_numeric(value, errors="coerce")
-    if pd.isna(converted):
-        return None
-    return float(converted)
 
 
 def load_settings() -> dict:
@@ -62,60 +38,18 @@ def load_settings() -> dict:
         return json.load(f)
 
 
+def resolve_workbook_path(settings: dict) -> Path:
+    workbook_path = Path(settings["workbook_path"])
+    if workbook_path.is_absolute():
+        return workbook_path
+    return PROJECT_ROOT / workbook_path
+
+
 def get_setting(settings: dict, key: str, default):
     return settings.get(key, default)
 
 
-def get_latest_valid_value(tests: pd.DataFrame, column: str, latest_date):
-    previous_rows = tests[tests["Date"] <= latest_date].copy()
-    previous_rows[column] = pd.to_numeric(previous_rows[column], errors="coerce")
-    valid_rows = previous_rows[previous_rows[column].notna()]
-
-    if valid_rows.empty:
-        return None, None
-
-    latest_valid = valid_rows.sort_values("Date").iloc[-1]
-    return float(latest_valid[column]), latest_valid["Date"]
-
-
-def get_test_value(
-    tests: pd.DataFrame,
-    latest_row: pd.Series,
-    column: str,
-    display_name: str,
-    mandatory: bool = False,
-    allow_carry_forward: bool = False,
-):
-    latest_date = latest_row["Date"]
-    raw_value = latest_row.get(column, None)
-    value = to_numeric_or_none(raw_value)
-
-    if value is not None:
-        return value, "current", latest_date
-
-    log(f"No numerical value present for {display_name}. Not including that test in direct current-row analysis.")
-
-    if mandatory:
-        raise SystemExit(
-            f"ERROR: Mandatory test value missing for {display_name}. "
-            f"Enter a numerical value in column '{column}' for the latest test row."
-        )
-
-    if allow_carry_forward:
-        carried_value, carried_date = get_latest_valid_value(tests, column, latest_date)
-        if carried_value is not None:
-            log(
-                f"Using most recent prior numerical value for {display_name}: "
-                f"{carried_value} from {carried_date}."
-            )
-            return carried_value, "carried_forward", carried_date
-
-        log(f"No prior numerical value found for {display_name}. This metric will be omitted.")
-
-    return None, "missing", None
-
-
-def determine_statuses(values: dict, targets: dict | None) -> tuple[str, list[str]]:
+def determine_statuses(values: dict, targets: Optional[dict]) -> Tuple[str, List[str]]:
     reasons = []
 
     fc = values.get("FC")
@@ -151,7 +85,7 @@ def determine_statuses(values: dict, targets: dict | None) -> tuple[str, list[st
 
 def main():
     settings = load_settings()
-    workbook_path = Path(settings["workbook_path"])
+    workbook_path = resolve_workbook_path(settings)
 
     pool_gallons = int(get_setting(settings, "pool_gallons", DEFAULT_POOL_GALLONS))
     chlorine_strength = float(
@@ -168,34 +102,7 @@ def main():
 
     log(f"Analyzing latest pool test row: {latest_date}")
 
-    values = {}
-    sources = {}
-
-    for column, display_name in MANDATORY_TESTS.items():
-        value, source, source_date = get_test_value(
-            tests,
-            latest,
-            column,
-            display_name,
-            mandatory=True,
-            allow_carry_forward=False,
-        )
-        values[column] = value
-        sources[f"{column} Source"] = source
-        sources[f"{column} Source Date"] = source_date
-
-    for column, display_name in OPTIONAL_TESTS.items():
-        value, source, source_date = get_test_value(
-            tests,
-            latest,
-            column,
-            display_name,
-            mandatory=False,
-            allow_carry_forward=column in CARRY_FORWARD_TESTS,
-        )
-        values[column] = value
-        sources[f"{column} Source"] = source
-        sources[f"{column} Source Date"] = source_date
+    values, sources = collect_test_values(tests, latest, log_func=log)
 
     fc = values["FC"]
     cc = values["CC"]
@@ -255,7 +162,8 @@ def main():
         "Minimum FC": minimum_fc,
         "Target FC Low": target_fc_low,
         "Target FC High": target_fc_high,
-        f"{chlorine_strength:g}% Liquid Chlorine Needed (gal)": chlorine_gal,
+        "Liquid Chlorine Needed (gal)": chlorine_gal,
+        "Liquid Chlorine Strength %": chlorine_strength,
 
         "Acid Recommendation": acid,
         "CSI": csi,
