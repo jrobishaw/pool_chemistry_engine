@@ -21,7 +21,6 @@ from pool_engine.excel_io import (
 )
 from pool_engine.test_values import collect_test_values
 
-
 SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_weather_settings.json"
 
 DEFAULT_POOL_GALLONS = 24000
@@ -149,7 +148,6 @@ def main():
         "Date": latest_date,
         "Overall Status": overall,
         "Action Reason": action_reason,
-
         "FC": fc,
         "TC": tc if tc is not None else fc + cc,
         "CC": cc,
@@ -158,21 +156,17 @@ def main():
         "TA": ta,
         "CYA": cya,
         "Temp": values.get("Temp"),
-
         "Minimum FC": minimum_fc,
         "Target FC Low": target_fc_low,
         "Target FC High": target_fc_high,
         "Liquid Chlorine Needed (gal)": chlorine_gal,
         "Liquid Chlorine Strength %": chlorine_strength,
-
         "Acid Recommendation": acid,
         "CSI": csi,
         "FC/CYA Ratio": fc_cya_ratio,
-
         "Pool Gallons": pool_gallons,
         "Chlorine Strength %": chlorine_strength,
         "FC ppm per 1 gal Chlorine": round(ppm_gal, 2),
-
         **sources,
     }])
 
