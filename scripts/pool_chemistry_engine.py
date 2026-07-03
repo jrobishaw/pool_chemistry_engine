@@ -1,12 +1,20 @@
 import json
-import math
+import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_chemistry_settings.json"
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from pool_engine.chemistry import (
+    acid_recommendation,
+    calc_csi,
+    fc_targets,
+    ppm_per_gallon,
+)
+
+SETTINGS_FILE = PROJECT_ROOT / "config" / "pool_weather_settings.json"
 
 DEFAULT_POOL_GALLONS = 24000
 DEFAULT_CHLORINE_STRENGTH_PERCENT = 10
@@ -52,47 +60,6 @@ def load_settings() -> dict:
 
 def get_setting(settings: dict, key: str, default):
     return settings.get(key, default)
-
-
-def fc_targets(cya: float) -> dict:
-    return {
-        "Minimum FC": round(cya * 0.075, 1),
-        "Target FC Low": round(cya * 0.10, 1),
-        "Target FC High": round(cya * 0.13, 1),
-    }
-
-
-def ppm_per_gallon(percent: float, gallons: int) -> float:
-    return (percent * 10000) / gallons
-
-
-def acid_recommendation(ph: float) -> str:
-    if ph >= 8.2:
-        return "Start with 1 quart muriatic acid, circulate 30-60 minutes, retest."
-    if ph >= 8.0:
-        return "Start with 24 oz muriatic acid, circulate 30-60 minutes, retest."
-    if ph > 7.8:
-        return "Start with 16 oz muriatic acid, circulate 30-60 minutes, retest."
-    return "No acid needed."
-
-
-def calc_csi(ph, ta, ch, cya, temp_f, salt=0, tds=1000):
-    if None in [ph, ta, ch, cya, temp_f]:
-        return None
-    if ch <= 0 or ta <= 0:
-        return None
-
-    carbonate_alkalinity = max(ta - (cya * 0.33), 1)
-    temp_c = (temp_f - 32) * 5 / 9
-    adjusted_tds = max(tds + salt, 1)
-
-    A = (math.log10(adjusted_tds) - 1) / 10
-    B = -13.12 * math.log10(temp_c + 273) + 34.55
-    C = math.log10(ch) - 0.4
-    D = math.log10(carbonate_alkalinity)
-
-    saturation_ph = (9.3 + A + B) - (C + D)
-    return round(ph - saturation_ph, 2)
 
 
 def get_latest_valid_value(tests: pd.DataFrame, column: str, latest_date):
