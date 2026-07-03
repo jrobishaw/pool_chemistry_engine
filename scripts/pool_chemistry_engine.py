@@ -1,10 +1,11 @@
 import json
 import math
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-SETTINGS_FILE = "pool_weather_settings.json"
+SETTINGS_FILE = "config/pool_weather_settings.json"
 
 DEFAULT_POOL_GALLONS = 24000
 DEFAULT_CHLORINE_STRENGTH_PERCENT = 10
@@ -96,7 +97,7 @@ def calc_csi(ph, ta, ch, cya, temp_f, salt=0, tds=1000):
 def get_latest_valid_value(tests: pd.DataFrame, column: str, latest_date):
     previous_rows = tests[tests["Date"] <= latest_date].copy()
     previous_rows[column] = pd.to_numeric(previous_rows[column], errors="coerce")
-    valid_rows = previous_rows.dropna(subset=[column])
+    valid_rows = previous_rows[previous_rows[column].notna()]
 
     if valid_rows.empty:
         return None, None
@@ -344,3 +345,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

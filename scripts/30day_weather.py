@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-SETTINGS_FILE = "pool_weather_settings.json"
+SETTINGS_FILE = "config/pool_weather_settings.json"
 TIMEZONE = "America/Chicago"
 DAYS_BACK = 30
 RECORD_LIMIT = 288  # Ambient max per request
@@ -104,7 +104,7 @@ def main():
         "MaxWindGustMPH": 2,
     })
 
-    output_file = Path("ambient_30day_weather_summary.xlsx")
+    output_file = Path("data/ambient_30day_weather_summary.xlsx")
     summary.to_excel(output_file, index=False)
 
     print("30-day Ambient Weather summary created successfully.")

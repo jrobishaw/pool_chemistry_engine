@@ -1,11 +1,11 @@
 # secrets / local config
-pool_weather_settings.json
+config/pool_weather_settings.json
 *.env
 .env
 
-# Excel/data outputs
-*.xlsx
-*.xls
+# local data / outputs
+data/*.xlsx
+reports/*.xlsx
 *.csv
 
 # Python
@@ -14,7 +14,9 @@ __pycache__/
 .venv/
 venv/
 
+# backup files
+*.bak
+
 # macOS / VS Code
 .DS_Store
 .vscode/
-*.bak

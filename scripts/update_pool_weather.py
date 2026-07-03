@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 from pathlib import Path
 
-SETTINGS_FILE = "pool_weather_settings.json"
+SETTINGS_FILE = "config/pool_weather_settings.json"
 TIMEZONE = "America/Chicago"
 
 with open(SETTINGS_FILE, "r") as f:
